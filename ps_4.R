@@ -70,3 +70,16 @@ response_chart %>%
               decimals = 0)
 
 # Problem 3
+polling_data %>% 
+  filter(educ != "[DO NOT READ] Refused") %>%
+  ggplot(aes(x = fct_rev(fct_relevel(educ, c("Graduate or Professional Degree", "Bachelors' degree", "Some college or trade school", "High school", "Grade school"))), y = final_weight)) + 
+  coord_flip() +
+  labs(title = "More Educated Matter Less in North Carolina 9th",
+       subtitle = "Poll gives more weight to people who are less likely to participate in polls",
+       x = "",
+       y = "Weight Given to Respondents in Calculating Poll Results",
+       caption = "New York Times Upshot/Siena College 2018 live polls") +
+  # Replace beeswarm geometry with a violin geometry with kernel width of 2.5
+  geom_violin() +
+  # add individual points on top of violins
+  geom_jitter(alpha = 0.3, size = 0.7, width = 0.2)
