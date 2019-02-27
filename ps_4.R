@@ -87,3 +87,12 @@ polling_data %>%
   geom_jitter(alpha = 0.3, size = 0.7, width = 0.2)
 
 # Problem 4
+education_by_gender <- polling_data %>%
+  select(gender, educ) %>% 
+  filter(educ != "[DO NOT READ] Refused") %>%
+  group_by(gender, educ = fct_rev(fct_relevel(educ, c("Graduate or Professional Degree", "Bachelors' degree", "Some college or trade school", "High school", "Grade school")))) %>% 
+  summarize(count = n())
+
+education_by_gender %>% 
+  ggplot(aes(x = gender, y = count, fill = educ)) +
+  geom_col(position = 'fill')
