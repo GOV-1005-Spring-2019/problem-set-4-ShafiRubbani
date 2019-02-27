@@ -164,3 +164,26 @@ polling_data %>%
 ```
 
 ## Problem 4
+```{r problem_4}
+#I was interested in seeing the distribution of education level by gender.
+education_by_gender <- polling_data %>%
+  #Select relevant variables
+  select(gender, educ) %>% 
+  #Filter out irrelevant responses
+  filter(educ != "[DO NOT READ] Refused") %>%
+  #Group by gender and re-ordered education
+  group_by(gender, educ = fct_rev(fct_relevel(educ, c("Graduate or Professional Degree", "Bachelors' degree", "Some college or trade school", "High school", "Grade school")))) %>% 
+  #Count number per group
+  summarize(count = n())
+```
+
+```{r problem_4_table}
+education_by_gender %>% 
+  #Plot gender against education counts
+  ggplot(aes(x = gender, y = count, fill = educ)) +
+  #Set aesthetic to stacked bar chart
+  geom_col(position = 'fill') +
+  labs(title = "Education of respondents by gender", x = "Gender", y = "Proportions")
+```
+
+The results are interesting. Men were more likely to have a high school or trade school level education, and women were more likely to have a bachelors' or professional degree. However, I am uncertain whether the differences in these proportions are statistically significant.
