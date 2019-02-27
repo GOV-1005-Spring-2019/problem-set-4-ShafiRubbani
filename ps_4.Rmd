@@ -186,4 +186,4 @@ education_by_gender %>%
   labs(title = "Education of respondents by gender", x = "Gender", y = "Proportions")
 ```
 
-The results are interesting. Men were more likely to have a high school or trade school level education, and women were more likely to have a bachelors' or professional degree. However, I am uncertain whether the differences in these proportions are statistically significant.
+The results are interesting. Men were more likely to have a high school or trade school level education, and women were more likely to have a bachelors' or professional degree. However, I am uncertain whether the differences in these proportions are statistically significant. I also note that the data only reflected the male and female genders and no others. This is likely an issue with data collection.
