@@ -53,9 +53,10 @@ response_chart <- response_chart %>%
   mutate(Rep = Rep / all) %>% 
   mutate(Und = Und / all) %>% 
   select(-c(`3`, all)) %>% 
-  ungroup()
-
-response_chart[response_chart == 0] <- NA
+  ungroup() %>%
+  na_if(0)
+             
+#response_chart[response_chart == 0] <- NA
 
 response_chart %>%
   gt() %>% 
@@ -67,7 +68,8 @@ response_chart %>%
     Und = "Undecided"
   ) %>%
   fmt_percent(columns = vars(Dem, Rep, Und),
-              decimals = 0)
+              decimals = 0) %>% 
+  fmt_missing(columns = vars(Und), rows = 4)
 
 # Problem 3
 polling_data %>% 
@@ -83,3 +85,5 @@ polling_data %>%
   geom_violin() +
   # add individual points on top of violins
   geom_jitter(alpha = 0.3, size = 0.7, width = 0.2)
+
+# Problem 4
