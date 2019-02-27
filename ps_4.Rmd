@@ -6,25 +6,161 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
+
+#Install relevant libraries
+library(tidyverse)
+library(dplyr)
+library(generics)
+library(gt)
+library(lubridate)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r read_data, include=FALSE}
+#Read data into dataframe from file
+polling_data <- read_csv(file = "ps_4_elections-poll-nc09-3.csv",
+                #Select column formats
+                 col_types =  cols(
+                   .default = col_character(),
+                   turnout_scale = col_double(),
+                   turnout_score = col_double(),
+                   w_LV = col_double(),
+                   w_RV = col_double(),
+                   #Final weight should be a double so we can perform arithmetic
+                   final_weight = col_double(),
+                   #Timestamp should be a datetime
+                   timestamp = col_datetime(format = "")))
 ```
 
-## Including Plots
+## Problem 1
 
-You can also embed plots, for example:
+```{r problem_1, include=FALSE}
+#Filter data by "Dem" response, save results in a variable
+dem_supporters <- polling_data %>% filter(response == "Dem") %>% count()
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+#Save results in a variable
+rep_vs_und <- polling_data %>%
+  #Filter data by "Rep" or "Und" response
+  filter(response %in% c("Rep", "Und")) %>%
+  #Group by response before summarizing
+  group_by(response) %>% 
+  #Count responses by party
+  summarize(party_count = n()) %>% 
+  #Summarize the difference between parties
+  summarize(diff = party_count[1] - party_count[2])
+
+#Save results in a variable
+gender_labels <- polling_data %>%
+  #Filter by difference between gender and gender_combined
+  filter(gender != gender_combined) %>%
+  #Count
+  count()
+
+#Save results in a variable
+white <- polling_data %>%
+  #Filter by race_eth "White" and file_race_black not "White"
+  filter(race_eth == "White", file_race_black != "White") %>%
+  #Count
+  count()
+
+#Save results in a variable
+first_response_diff <- polling_data %>%
+  #Filter by response "Rep" or "Dem"
+  filter(response %in% c("Rep", "Dem")) %>%
+  #Group by response
+  group_by(response) %>%
+  #Summarize earliest response by party
+  summarize(first_response = min(timestamp)) %>%
+  #Summarize difference between parties
+  summarize(time_diff = round(first_response[2] - first_response[1], digits = 0))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+There were `r dem_supporters` respondents who supported the Democratic candidate.
+
+There were `r rep_vs_und` more respondents who favored the Republican candidate than who were Undecided.
+
+There are two gender variables (gender and gender_combined). There are `r gender_labels` individuals for whom these variables have different values.
+
+There are `r white` respondents listed as “White” under race_eth who are not listed as “White” under file_race_black.
+
+The first response of Dem came `r first_response_diff` minutes (rounded to the nearest minute) before the first response of Rep.
+
+## Problem 2
+
+```{r problem_2, include=FALSE}
+#Rename transformed data
+response_chart <- polling_data %>% 
+  #Filter out invalid responses
+  filter(race_eth != "[DO NOT READ] Don't know/Refused") %>% 
+  #Reorder races
+  mutate(race_eth = fct_relevel(race_eth, c("White", "Black", "Hispanic", "Asian", "Other"))) %>%
+  #Select relevant columns (party, race, and weight by response likelihood)
+  select(response, race_eth, final_weight) %>% 
+  #Group by race and response
+  group_by(race_eth, response) %>% 
+  #Sum weighted responses by group
+  summarize(total = sum(final_weight)) %>%
+  #Rearrange table to show party response proportions by race
+  spread(key =  response, value = total)
+
+#Set NA values to zero for arithemtic
+response_chart[is.na(response_chart)] <- 0
+
+response_chart <- response_chart %>%
+  #Calculate total votes by race
+  mutate(all = Dem + Rep + Und + `3`) %>% 
+  #Calculate response proportions by race
+  mutate(Dem = Dem / all) %>% 
+  mutate(Rep = Rep / all) %>% 
+  mutate(Und = Und / all) %>%
+  #Hide third-party and total values
+  select(-c(`3`, all)) %>% 
+  ungroup() %>%
+  #Set zero to NA again
+  na_if(0)
+```
+
+```{r problem_2_table, echo=FALSE}
+response_chart %>%
+  #Make graphic table
+  gt() %>% 
+  #Set title
+  tab_header(title = "Polling Results by Race in North Carolina 9th Congressional District") %>% 
+  #Label columns
+  cols_label(
+    race_eth = "",
+    Dem = "Democrat",
+    Rep = "Republican",
+    Und = "Undecided"
+  ) %>%
+  #Format proportions as percentages
+  fmt_percent(columns = vars(Dem, Rep, Und),
+              decimals = 0) %>%
+  #Format NA values as dashes
+  fmt_missing(columns = vars(Und), rows = 4)
+```
+
+## Problem 3
+
+```{r problem_3}
+polling_data %>% 
+  #Filter out invalid responses
+  filter(educ != "[DO NOT READ] Refused") %>%
+  #Plot (re-ordered) education level against response weight distribution
+  ggplot(aes(x = fct_rev(fct_relevel(educ, c("Graduate or Professional Degree", "Bachelors' degree", "Some college or trade school", "High school", "Grade school"))), y = final_weight)) + 
+  #Flip axes
+  coord_flip() +
+  #Label title, subtitle, y axis, and caption
+  labs(title = "More Educated Matter Less in North Carolina 9th",
+       subtitle = "Poll gives more weight to people who are less likely to participate in polls",
+       x = "",
+       y = "Weight Given to Respondents in Calculating Poll Results",
+       caption = "New York Times Upshot/Siena College 2018 live polls") +
+  #Set aesthetic to violin plot
+  geom_violin() +
+  #Add visualization of datapoints
+  geom_jitter(alpha = 0.3, size = 0.7, width = 0.2)
+```
+
+## Problem 4
